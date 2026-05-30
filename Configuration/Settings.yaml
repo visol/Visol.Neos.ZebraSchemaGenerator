@@ -1,0 +1,70 @@
+Visol:
+  Neos:
+    ZebraSchemaGenerator:
+      # -----------------------------------------------------------------------
+      # Project paths — no sensible generic default, MUST be overridden by the
+      # consuming project. Paths are relative to FLOW_PATH_ROOT.
+      # -----------------------------------------------------------------------
+      interfacesTargetPath: null
+      componentTargetPath: null
+      nodeTypesConfigPath: null
+      relativeComponentImportPrefix: null
+      serverComponentBasePath: null
+
+      # Write-back target: the YAML file into which "Add to config" entries are
+      # written, relative to FLOW_PATH_ROOT. Override in the consuming project.
+      settingsFilePath: null
+      # Dot-separated config key path under which write-back entries are nested
+      # inside settingsFilePath. Defaults to this package's own settings root.
+      configKeyPath: 'Visol.Neos.ZebraSchemaGenerator'
+
+      # -----------------------------------------------------------------------
+      # Templates — defaults ship with this package, overridable per project.
+      # -----------------------------------------------------------------------
+      componentTemplatePath: 'resource://Visol.Neos.ZebraSchemaGenerator/Private/Templates/ServerComponent.tsx'
+      baseTypesTemplatePath: 'resource://Visol.Neos.ZebraSchemaGenerator/Private/Templates/_types.ts'
+
+      # -----------------------------------------------------------------------
+      # Generic generation behaviour — sensible defaults, overridable.
+      # -----------------------------------------------------------------------
+      # Type names defined in the base types template; used to detect which of
+      # them an interface references so the import from './_types' is emitted.
+      baseTypeNames:
+        - 'NeosImageData'
+        - 'NeosAssetData'
+        - 'NeosNodeReference'
+        - 'NeosDateTime'
+
+      # Node types excluded from generation entirely (full names).
+      excludedNodeTypes:
+        - 'unstructured'
+        - 'Neos.Neos:PluginView'
+        - 'Neos.Neos:FallbackNode'
+        - 'Neos.Neos:ContentCollection'
+        - 'Neos.Neos:Shortcut'
+
+      # Substrings in a node type name that cause it to be skipped (abstract
+      # mixins/constraints etc.).
+      excludedNodeTypeNamePatterns:
+        - 'Mixin'
+        - 'Constraint'
+
+      # Substrings that classify a node type into a Zebra component category.
+      categoryMarkers:
+        content: ':Content.'
+        document: ':Document.'
+
+      # Editor preset substring => TypeScript type. Checked before the type map.
+      presetTypeMappings:
+        inlineEditor: 'string'
+        image: 'NeosImageData'
+        link: 'string'
+
+      # Reference target node types that should be emitted as `string` / `string[]`
+      # instead of an interface reference (e.g. taxonomy identifiers). Empty by
+      # default so this package carries no dependency on any taxonomy package.
+      referenceTypesAsString: []
+
+      # Project-specific property type overrides and extra properties.
+      customPropertyTypes: {}
+      extraProperties: {}

@@ -1,0 +1,21 @@
+{
+    "name": "visol/neos-zebra-schema-generator",
+    "version": "0.0.0",
+    "type": "neos-package",
+    "description": "Generate TypeScript interfaces and Zebra server components from Neos node type definitions",
+    "license": "MIT",
+    "require": {
+        "neos/flow": "*",
+        "neos/content-repository": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Visol\\Neos\\ZebraSchemaGenerator\\": "Classes/"
+        }
+    },
+    "extra": {
+        "neos": {
+            "package-key": "Visol.Neos.ZebraSchemaGenerator"
+        }
+    }
+}
