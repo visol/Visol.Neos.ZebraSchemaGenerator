@@ -56,20 +56,29 @@ class SchemaCommandController extends CommandController
         $this->schemaService->generateBaseTypesFile();
         $this->outputLine("  Generated: _types.ts");
 
-        $nodeTypes = $this->nodeTypeManager->getNodeTypes(false);
+        // Include abstract node types so configured mixins can be generated;
+        // all other abstract types are skipped below.
+        $nodeTypes = $this->nodeTypeManager->getNodeTypes(true);
         $generatedInterfaces = [];
         $excludedNodeTypes = $this->schemaService->getExcludedNodeTypes();
 
         foreach ($nodeTypes as $nodeType) {
             $name = $nodeType->getName();
+            $isMixin = $this->schemaService->isMixinByNamePattern($name);
+
+            // Abstract types only get an interface when configured as mixins
+            if ($nodeType->isAbstract() && !$isMixin) {
+                continue;
+            }
 
             // Skip excluded types
             if (in_array($name, $excludedNodeTypes, true)) {
                 continue;
             }
 
-            // Skip abstract types matching configured name patterns (Mixins, Constraints)
-            if ($this->schemaService->isExcludedByNamePattern($name)) {
+            // Skip types matching configured name patterns (Constraints etc.);
+            // configured mixin patterns win over exclusion patterns
+            if (!$isMixin && $this->schemaService->isExcludedByNamePattern($name)) {
                 continue;
             }
 
@@ -80,7 +89,8 @@ class SchemaCommandController extends CommandController
                 }
             }
 
-            $result = $this->schemaService->buildInterfaceContent($nodeType);
+            // Mixin interfaces describe a partial shape: all properties optional
+            $result = $this->schemaService->buildInterfaceContent($nodeType, $isMixin);
             if ($result === null) {
                 continue;
             }
