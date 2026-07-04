@@ -33,27 +33,28 @@ package's own `Configuration/Settings.yaml` documents the generic defaults; over
 project-specific keys (`interfacesTargetPath`, `componentTargetPath`, `excludedNodeTypes`,
 `referenceTypesAsString`, `customPropertyTypes`, `extraProperties`, …) in your site package.
 
-### Mixin interfaces
+### Interfaces for abstract node types
 
-By default only non-abstract node types get an interface. When integration code reads
-mixin properties shared across many node types (e.g. a `spaceBelow` or `containerWidth`
-mixin used by wrapper components), configure the mixin name patterns to generate
-interfaces for them as well:
+By default only non-abstract node types get an interface. With
+`abstractNodeTypeNameIncludePatterns`, abstract node types whose name matches one of the
+configured substrings are generated as well. The typical case are mixins: integration
+code often reads mixin properties shared across many node types (e.g. a `spaceBelow` or
+`containerWidth` mixin used by wrapper components) and wants a matching type:
 
 ```yaml
 Visol:
   Neos:
     ZebraSchemaGenerator:
-      mixinNodeTypeNamePatterns:
+      abstractNodeTypeNameIncludePatterns:
         - ':Mixin.'
 ```
 
-Matching node types (abstract ones included) get an interface named like any other type
+Matching node types get an interface named like any other type
 (`Vendor.Site:Mixin.Section` → `VendorSite_MixinSection`) in which **all properties are
-optional**, because a mixin interface describes a partial shape and consumers must handle
-nodes created before a property existed. Mixin patterns win over
+optional**, because such an interface describes a partial shape and consumers must handle
+nodes created before a property existed. Include patterns win over
 `excludedNodeTypeNamePatterns`, so the default `Mixin` exclusion can stay in place. No
-Zebra components are generated for mixins.
+Zebra components are generated for abstract node types.
 
 ## License
 

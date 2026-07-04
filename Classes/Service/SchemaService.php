@@ -69,10 +69,10 @@ class SchemaService
     protected ?array $excludedNodeTypeNamePatterns = null;
 
     /**
-     * @Flow\InjectConfiguration(package="Visol.Neos.ZebraSchemaGenerator", path="mixinNodeTypeNamePatterns")
+     * @Flow\InjectConfiguration(package="Visol.Neos.ZebraSchemaGenerator", path="abstractNodeTypeNameIncludePatterns")
      * @var list<string>|null
      */
-    protected ?array $mixinNodeTypeNamePatterns = null;
+    protected ?array $abstractNodeTypeNameIncludePatterns = null;
 
     /**
      * @Flow\InjectConfiguration(package="Visol.Neos.ZebraSchemaGenerator", path="categoryMarkers")
@@ -169,19 +169,20 @@ class SchemaService
     /**
      * @return list<string>
      */
-    public function getMixinNodeTypeNamePatterns(): array
+    public function getAbstractNodeTypeNameIncludePatterns(): array
     {
-        return $this->mixinNodeTypeNamePatterns ?? [];
+        return $this->abstractNodeTypeNameIncludePatterns ?? [];
     }
 
     /**
-     * Check whether a node type name matches any configured mixin pattern.
-     * Matching (usually abstract) node types get an interface with all
-     * properties optional and are exempt from excludedNodeTypeNamePatterns.
+     * Check whether a node type name matches any configured abstract include
+     * pattern (mixins, constraints, …). Matching node types get an interface
+     * with all properties optional even though they are abstract, and are
+     * exempt from excludedNodeTypeNamePatterns.
      */
-    public function isMixinByNamePattern(string $nodeTypeName): bool
+    public function isAbstractNodeTypeIncluded(string $nodeTypeName): bool
     {
-        foreach ($this->getMixinNodeTypeNamePatterns() as $pattern) {
+        foreach ($this->getAbstractNodeTypeNameIncludePatterns() as $pattern) {
             if (str_contains($nodeTypeName, $pattern)) {
                 return true;
             }
@@ -513,7 +514,8 @@ class SchemaService
      * Generate interface content for a single node type (without writing to disk)
      *
      * @param bool $forceOptionalProperties Emit every property as optional. Used for
-     *                                      mixin interfaces, which describe a partial
+     *                                      abstract node type interfaces (mixins,
+     *                                      constraints, …), which describe a partial
      *                                      shape shared across many node types.
      * @return array{interfaceName: string, content: string}|null
      */

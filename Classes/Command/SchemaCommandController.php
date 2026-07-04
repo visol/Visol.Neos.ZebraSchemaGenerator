@@ -56,18 +56,18 @@ class SchemaCommandController extends CommandController
         $this->schemaService->generateBaseTypesFile();
         $this->outputLine("  Generated: _types.ts");
 
-        // Include abstract node types so configured mixins can be generated;
-        // all other abstract types are skipped below.
+        // Include abstract node types so configured includes (mixins, constraints, …)
+        // can be generated; all other abstract types are skipped below.
         $nodeTypes = $this->nodeTypeManager->getNodeTypes(true);
         $generatedInterfaces = [];
         $excludedNodeTypes = $this->schemaService->getExcludedNodeTypes();
 
         foreach ($nodeTypes as $nodeType) {
             $name = $nodeType->getName();
-            $isMixin = $this->schemaService->isMixinByNamePattern($name);
+            $isIncludedAbstract = $this->schemaService->isAbstractNodeTypeIncluded($name);
 
-            // Abstract types only get an interface when configured as mixins
-            if ($nodeType->isAbstract() && !$isMixin) {
+            // Abstract types only get an interface when explicitly included
+            if ($nodeType->isAbstract() && !$isIncludedAbstract) {
                 continue;
             }
 
@@ -76,9 +76,9 @@ class SchemaCommandController extends CommandController
                 continue;
             }
 
-            // Skip types matching configured name patterns (Constraints etc.);
-            // configured mixin patterns win over exclusion patterns
-            if (!$isMixin && $this->schemaService->isExcludedByNamePattern($name)) {
+            // Skip types matching configured exclusion name patterns;
+            // configured abstract include patterns win over exclusion patterns
+            if (!$isIncludedAbstract && $this->schemaService->isExcludedByNamePattern($name)) {
                 continue;
             }
 
@@ -89,8 +89,8 @@ class SchemaCommandController extends CommandController
                 }
             }
 
-            // Mixin interfaces describe a partial shape: all properties optional
-            $result = $this->schemaService->buildInterfaceContent($nodeType, $isMixin);
+            // Included abstract interfaces describe a partial shape: all properties optional
+            $result = $this->schemaService->buildInterfaceContent($nodeType, $isIncludedAbstract);
             if ($result === null) {
                 continue;
             }

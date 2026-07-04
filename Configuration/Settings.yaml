@@ -49,13 +49,14 @@ Visol:
         - 'Mixin'
         - 'Constraint'
 
-      # Substrings identifying (usually abstract) mixin node types that should get
-      # a TypeScript interface of their own. Matching types win over
-      # excludedNodeTypeNamePatterns, and all their properties are emitted as
-      # optional: a mixin interface describes a partial shape shared by many node
-      # types, and consumers must handle nodes created before a property existed.
-      # Empty by default (no mixin interfaces are generated).
-      mixinNodeTypeNamePatterns: []
+      # Substrings identifying abstract node types (mixins, constraints, …) that
+      # should get a TypeScript interface of their own even though they are
+      # abstract. Matching types win over excludedNodeTypeNamePatterns, and all
+      # their properties are emitted as optional: such an interface describes a
+      # partial shape shared by many node types, and consumers must handle nodes
+      # created before a property existed. Empty by default (abstract node types
+      # get no interfaces).
+      abstractNodeTypeNameIncludePatterns: []
 
       # Substrings that classify a node type into a Zebra component category.
       categoryMarkers:
