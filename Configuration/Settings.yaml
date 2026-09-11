@@ -33,6 +33,7 @@ Visol:
         - 'NeosImageData'
         - 'NeosAssetData'
         - 'NeosNodeReference'
+        - 'NeosReferencedDocument'
         - 'NeosDateTime'
 
       # Node types excluded from generation entirely (full names).
