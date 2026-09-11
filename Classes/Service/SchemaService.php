@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Visol\Neos\ZebraSchemaGenerator\Service;
 
 use Neos\ContentRepository\Domain\Model\NodeType;
+use Neos\ContentRepository\Domain\Service\NodeTypeManager;
 use Neos\Flow\Annotations as Flow;
 
 /**
@@ -106,6 +107,12 @@ class SchemaService
      * @Flow\InjectConfiguration(package="Visol.Neos.ZebraSchemaGenerator", path="serverComponentBasePath")
      */
     protected ?string $serverComponentBasePath = null;
+
+    /**
+     * @Flow\Inject
+     * @var NodeTypeManager
+     */
+    protected $nodeTypeManager;
 
     // =========================================================================
     // Getters
@@ -529,9 +536,15 @@ class SchemaService
                     }
                 }
 
-                // Track sibling interface references (not primitives, not baseTypes)
-                if (!$isNeosType) {
+                // Track sibling interface references (not primitives, not baseTypes), including
+                // the type argument of a generic base type such as NeosReferencedDocument<Sibling>
+                $baseType = null;
+                if (preg_match('/<(\w+)>/', $tsType, $genericMatch) === 1) {
+                    $baseType = $genericMatch[1];
+                } elseif (!$isNeosType) {
                     $baseType = rtrim($tsType, '[]');
+                }
+                if ($baseType !== null) {
                     $primitives = ['string', 'boolean', 'number', 'any'];
                     if (!in_array($baseType, $primitives, true) && !str_contains($baseType, "'") && $baseType !== $interfaceName) {
                         $siblingImports[$baseType] = true;
@@ -903,12 +916,48 @@ class SchemaService
         if ($allowedNodeTypes !== []) {
             // For node references, API returns the node properties
             // Use the first allowed type to generate interface reference
-            $targetType = $this->inferTargetInterface($allowedNodeTypes);
+            $targetNodeTypeName = $allowedNodeTypes[0];
+            $targetType = $this->isInterfaceGenerated($targetNodeTypeName)
+                ? $this->inferTargetInterface($allowedNodeTypes)
+                : null;
+
+            // For document references, the ContentApi adds _identifier, _nodeType and _nodeUri
+            if ($this->isDocumentNodeType($targetNodeTypeName)) {
+                $targetType = $targetType !== null ? "NeosReferencedDocument<{$targetType}>" : 'NeosReferencedDocument';
+            }
+
+            // No interface is generated for the target (abstract or excluded), so importing it would break
+            $targetType ??= 'NeosNodeReference';
+
             return $isArray ? "{$targetType}[]" : $targetType;
         }
 
         // Default: generic node reference
         return $isArray ? 'NeosNodeReference[]' : 'NeosNodeReference';
+    }
+
+    /**
+     * Whether an interface file is generated for the node type (see generateInterfacesCommand):
+     * it exists, is not abstract and is not excluded by name or pattern.
+     */
+    protected function isInterfaceGenerated(string $nodeTypeName): bool
+    {
+        if (!$this->nodeTypeManager->hasNodeType($nodeTypeName)) {
+            return false;
+        }
+
+        return !$this->nodeTypeManager->getNodeType($nodeTypeName)->isAbstract()
+            && !in_array($nodeTypeName, $this->getExcludedNodeTypes(), true)
+            && !$this->isExcludedByNamePattern($nodeTypeName);
+    }
+
+    /**
+     * Whether the node type is a document, for which the ContentApi resolves a URI on references
+     */
+    protected function isDocumentNodeType(string $nodeTypeName): bool
+    {
+        return $this->nodeTypeManager->hasNodeType($nodeTypeName)
+            && $this->nodeTypeManager->getNodeType($nodeTypeName)->isOfType('Neos.Neos:Document');
     }
 
     /**

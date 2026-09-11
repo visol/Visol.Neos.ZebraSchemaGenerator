@@ -36,6 +36,17 @@ export interface NeosNodeReference {
   properties: Record<string, unknown>
 }
 
+/**
+ * Referenced document node as returned by Networkteam.Neos.ContentApi (>= 0.13): the properties
+ * of the target node type plus its identifier, node type and URI.
+ */
+export type NeosReferencedDocument<T = Record<string, unknown>> = T & {
+  _identifier: string
+  _nodeType: string
+  /** Missing when no URI could be resolved (e.g. for a site without an active domain) */
+  _nodeUri?: string
+}
+
 /** DateTime as serialized by PHP's JSON encoding */
 export interface NeosDateTime {
   date: string
