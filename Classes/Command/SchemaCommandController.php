@@ -573,7 +573,7 @@ class SchemaCommandController extends CommandController
                     $nodeTypeName
                 ));
                 $this->outputLine(sprintf(
-                    '    <error>Generate it first: ddev app-neos-next-flow visol.neos.zebraschemagenerator:schema:generateinterfaces --package=%s</error>',
+                    '    <error>Generate it first: ./flow visol.neos.zebraschemagenerator:schema:generateinterfaces --package=%s</error>',
                     $packageName
                 ));
                 $this->outputLine('    <error><options=bold>⚠️  WARNING: The mapping to Zebra will be removed!</></error>');
