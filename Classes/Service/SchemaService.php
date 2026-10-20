@@ -1077,31 +1077,17 @@ class SchemaService
     /**
      * Check if property is optional
      *
+     * Only a NotEmptyValidator makes a property required. A defaultValue does not: Neos sets
+     * it when a node is created, so nodes created before the property existed lack it, and
+     * clearing a date, number or reference in the inspector stores null.
+     *
      * @param array<string, mixed> $propertyConfig
      */
     protected function isPropertyOptional(array $propertyConfig): bool
     {
-        // Check for NotEmptyValidator = required = NOT optional
         $validation = $propertyConfig['validation'] ?? [];
-        if (isset($validation['Neos.Neos/Validation/NotEmptyValidator'])) {
-            return false;
-        }
 
-        // Has meaningful default value = always has a value = NOT optional
-        if (array_key_exists('defaultValue', $propertyConfig)) {
-            $default = $propertyConfig['defaultValue'];
-
-            // Empty/null-like defaults mean the property can be empty = optional
-            if ($default === '' || $default === null || $default === []) {
-                return true;
-            }
-
-            // Has a real default value = NOT optional
-            return false;
-        }
-
-        // No default and no required validator = can be empty = optional
-        return true;
+        return !isset($validation['Neos.Neos/Validation/NotEmptyValidator']);
     }
 
     /**
