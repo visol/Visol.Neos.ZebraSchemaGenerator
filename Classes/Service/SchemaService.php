@@ -94,6 +94,11 @@ class SchemaService
     protected ?array $baseTypeNames = null;
 
     /**
+     * @Flow\InjectConfiguration(package="Visol.Neos.ZebraSchemaGenerator", path="formatCommand")
+     */
+    protected ?string $formatCommand = null;
+
+    /**
      * @Flow\InjectConfiguration(package="Visol.Neos.ZebraSchemaGenerator", path="baseTypesTemplatePath")
      */
     protected ?string $baseTypesTemplatePath = null;
@@ -292,15 +297,8 @@ class SchemaService
      */
     public function detectExtraProperties(string $nodeTypeName, string $generatedContent): array
     {
-        $interfaceName = $this->getInterfaceName($nodeTypeName);
-        $filePath = $this->getTargetPath() . $interfaceName . '.ts';
-
-        if (!file_exists($filePath)) {
-            return [];
-        }
-
-        $existingContent = file_get_contents($filePath);
-        if ($existingContent === false) {
+        $existingContent = $this->readExistingInterface($this->getInterfaceName($nodeTypeName));
+        if ($existingContent === null) {
             return [];
         }
 
@@ -405,15 +403,8 @@ class SchemaService
      */
     public function detectDivergences(string $nodeTypeName, string $generatedContent): array
     {
-        $interfaceName = $this->getInterfaceName($nodeTypeName);
-        $filePath = $this->getTargetPath() . $interfaceName . '.ts';
-
-        if (!file_exists($filePath)) {
-            return [];
-        }
-
-        $existingContent = file_get_contents($filePath);
-        if ($existingContent === false) {
+        $existingContent = $this->readExistingInterface($this->getInterfaceName($nodeTypeName));
+        if ($existingContent === null) {
             return [];
         }
 
@@ -432,6 +423,40 @@ class SchemaService
         }
 
         return $divergences;
+    }
+
+    /**
+     * Read an existing interface file in the shape the generator writes, whatever formatter
+     * ran over it since (see normalizeInterfaceContent).
+     */
+    public function readExistingInterface(string $interfaceName): ?string
+    {
+        $filePath = $this->getTargetPath() . $interfaceName . '.ts';
+        if (!file_exists($filePath)) {
+            return null;
+        }
+
+        $content = file_get_contents($filePath);
+        if ($content === false) {
+            return null;
+        }
+
+        return $this->normalizeInterfaceContent($content);
+    }
+
+    /**
+     * Undo what a formatter typically changes in a generated interface, so the line based
+     * comparison with the generated content still works: union members wrapped onto lines
+     * of their own are joined again, and property lines get back their semicolon.
+     *
+     * "  color?:\n    | 'a'\n    | 'b' // default: a" => "  color?: 'a' | 'b'; // default: a"
+     */
+    public function normalizeInterfaceContent(string $content): string
+    {
+        $content = preg_replace('/\n[ \t]+(?=\| )/', ' ', $content) ?? $content;
+        $content = preg_replace('/^([ \t]+\w+\??:) \| /m', '$1 ', $content) ?? $content;
+
+        return preg_replace('/^([ \t]+\w+\??: [^;\n]*?)([ \t]*\/\/.*)?$/m', '$1;$2', $content) ?? $content;
     }
 
     /**
@@ -474,7 +499,7 @@ class SchemaService
     /**
      * Generate base types file by copying the configured base types template verbatim.
      */
-    public function generateBaseTypesFile(): void
+    public function generateBaseTypesFile(): string
     {
         $content = file_get_contents($this->baseTypesTemplatePath ?? '');
         if ($content === false) {
@@ -484,7 +509,10 @@ class SchemaService
             ));
         }
 
-        file_put_contents($this->getTargetPath() . '_types.ts', $content);
+        $fileName = $this->getTargetPath() . '_types.ts';
+        file_put_contents($fileName, $content);
+
+        return $fileName;
     }
 
     /**
@@ -596,7 +624,7 @@ class SchemaService
         if ($usedNeosTypes !== []) {
             sort($usedNeosTypes);
             $imports = implode(', ', $usedNeosTypes);
-            $lines[] = "import { {$imports} } from './_types';";
+            $lines[] = "import type { {$imports} } from './_types';";
         }
 
         // Add custom type imports
@@ -606,7 +634,7 @@ class SchemaService
             $uniqueTypes = array_unique($cleanTypes);
             sort($uniqueTypes);
             $imports = implode(', ', $uniqueTypes);
-            $lines[] = "import { {$imports} } from '{$importPath}';";
+            $lines[] = "import type { {$imports} } from '{$importPath}';";
         }
 
         // Add sibling interface imports
@@ -641,10 +669,34 @@ class SchemaService
     /**
      * Write interface content to disk
      */
-    public function writeInterfaceFile(string $interfaceName, string $content): void
+    public function writeInterfaceFile(string $interfaceName, string $content): string
     {
         $fileName = $this->getTargetPath() . $interfaceName . '.ts';
         file_put_contents($fileName, $content);
+
+        return $fileName;
+    }
+
+    /**
+     * Run the configured formatCommand over the written files, from FLOW_PATH_ROOT.
+     * "{files}" in the command is replaced by the shell-quoted paths.
+     *
+     * @param list<string> $paths
+     * @return array{command: string, exitCode: int, output: list<string>}|null null when no command is configured
+     */
+    public function formatFiles(array $paths): ?array
+    {
+        if ($this->formatCommand === null || $this->formatCommand === '' || $paths === []) {
+            return null;
+        }
+
+        $files = implode(' ', array_map('escapeshellarg', $paths));
+        $command = str_replace('{files}', $files, $this->formatCommand);
+        $output = [];
+        $exitCode = 0;
+        exec('cd ' . escapeshellarg(FLOW_PATH_ROOT) . ' && ' . $command . ' 2>&1', $output, $exitCode);
+
+        return ['command' => $command, 'exitCode' => $exitCode, 'output' => $output];
     }
 
     /**
@@ -732,7 +784,7 @@ class SchemaService
      *
      * @param list<string> $interfaceNames
      */
-    public function generateIndexFile(array $interfaceNames): void
+    public function generateIndexFile(array $interfaceNames): string
     {
         // Scan directory for all existing interface files
         $allInterfaces = [];
@@ -770,7 +822,10 @@ class SchemaService
         }
 
         $content = implode("\n", $lines) . "\n";
-        file_put_contents($this->getTargetPath() . 'index.ts', $content);
+        $fileName = $this->getTargetPath() . 'index.ts';
+        file_put_contents($fileName, $content);
+
+        return $fileName;
     }
 
     /**

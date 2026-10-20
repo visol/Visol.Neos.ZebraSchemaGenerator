@@ -53,7 +53,7 @@ class SchemaCommandController extends CommandController
         }
 
         $this->schemaService->ensureTargetDirectoryExists();
-        $this->schemaService->generateBaseTypesFile();
+        $writtenFiles = [$this->schemaService->generateBaseTypesFile()];
         $this->outputLine("  Generated: _types.ts");
 
         $nodeTypes = $this->nodeTypeManager->getNodeTypes(false);
@@ -122,7 +122,7 @@ class SchemaCommandController extends CommandController
                 $finalContent = $this->schemaService->removeUnusedImports($finalContent);
             }
 
-            $this->schemaService->writeInterfaceFile($interfaceName, $finalContent);
+            $writtenFiles[] = $this->schemaService->writeInterfaceFile($interfaceName, $finalContent);
             $generatedInterfaces[] = $interfaceName;
             if (!$hadChanges) {
                 $this->outputLine("  Generated: {$interfaceName}");
@@ -130,8 +130,20 @@ class SchemaCommandController extends CommandController
         }
 
         // Generate barrel index file
-        $this->schemaService->generateIndexFile($generatedInterfaces);
+        $writtenFiles[] = $this->schemaService->generateIndexFile($generatedInterfaces);
         $this->outputLine("  Generated: index.ts");
+
+        $formatResult = $this->schemaService->formatFiles($writtenFiles);
+        if ($formatResult !== null) {
+            if ($formatResult['exitCode'] === 0) {
+                $this->outputLine(sprintf('  Formatted %d files', count($writtenFiles)));
+            } else {
+                $this->outputLine(sprintf('<error>formatCommand failed with exit code %d:</error>', $formatResult['exitCode']));
+                foreach ($formatResult['output'] as $line) {
+                    $this->outputLine('  ' . $line);
+                }
+            }
+        }
 
         $packageInfo = $package !== null ? " for package '{$package}'" : " for all packages";
         $this->outputLine('');
@@ -171,9 +183,8 @@ class SchemaCommandController extends CommandController
         }
 
         // Read existing file to use as base for selective overwrites
-        $existingFilePath = $this->schemaService->getTargetPath() . $interfaceName . '.ts';
-        $existingContent = file_get_contents($existingFilePath);
-        if ($existingContent === false) {
+        $existingContent = $this->schemaService->readExistingInterface($interfaceName);
+        if ($existingContent === null) {
             return $generatedContent;
         }
         $finalContent = $generatedContent;
@@ -285,9 +296,8 @@ class SchemaCommandController extends CommandController
             return $content;
         }
 
-        $existingFilePath = $this->schemaService->getTargetPath() . $interfaceName . '.ts';
-        $existingContent = file_get_contents($existingFilePath);
-        if ($existingContent === false) {
+        $existingContent = $this->schemaService->readExistingInterface($interfaceName);
+        if ($existingContent === null) {
             return $content;
         }
         $keptExtras = false;

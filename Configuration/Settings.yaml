@@ -18,6 +18,14 @@ Visol:
       # inside settingsFilePath. Defaults to this package's own settings root.
       configKeyPath: 'Visol.Neos.ZebraSchemaGenerator'
 
+      # Shell command that formats the generated files with the project's own
+      # formatter, run from FLOW_PATH_ROOT after every interface generation.
+      # "{files}" is replaced by the shell-quoted paths of all written files.
+      # The generator's own output is not tied to any code style; the
+      # comparison with existing files ignores what a formatter changes.
+      # Example: 'cd ../frontend && npx biome check --write {files}'
+      formatCommand: null
+
       # -----------------------------------------------------------------------
       # Templates — defaults ship with this package, overridable per project.
       # -----------------------------------------------------------------------
