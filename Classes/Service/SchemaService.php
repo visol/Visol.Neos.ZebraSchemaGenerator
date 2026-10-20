@@ -70,6 +70,12 @@ class SchemaService
     protected ?array $excludedNodeTypeNamePatterns = null;
 
     /**
+     * @Flow\InjectConfiguration(package="Visol.Neos.ZebraSchemaGenerator", path="abstractNodeTypeNameIncludePatterns")
+     * @var list<string>|null
+     */
+    protected ?array $abstractNodeTypeNameIncludePatterns = null;
+
+    /**
      * @Flow\InjectConfiguration(package="Visol.Neos.ZebraSchemaGenerator", path="categoryMarkers")
      * @var array<string, string>|null
      */
@@ -160,6 +166,30 @@ class SchemaService
     public function isExcludedByNamePattern(string $nodeTypeName): bool
     {
         foreach ($this->getExcludedNodeTypeNamePatterns() as $pattern) {
+            if (str_contains($nodeTypeName, $pattern)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getAbstractNodeTypeNameIncludePatterns(): array
+    {
+        return $this->abstractNodeTypeNameIncludePatterns ?? [];
+    }
+
+    /**
+     * Check whether a node type name matches any configured abstract include
+     * pattern (mixins, constraints, …). Matching node types get an interface
+     * with all properties optional even though they are abstract, and are
+     * exempt from excludedNodeTypeNamePatterns.
+     */
+    public function isAbstractNodeTypeIncluded(string $nodeTypeName): bool
+    {
+        foreach ($this->getAbstractNodeTypeNameIncludePatterns() as $pattern) {
             if (str_contains($nodeTypeName, $pattern)) {
                 return true;
             }
@@ -490,9 +520,13 @@ class SchemaService
     /**
      * Generate interface content for a single node type (without writing to disk)
      *
+     * @param bool $forceOptionalProperties Emit every property as optional. Used for
+     *                                      abstract node type interfaces (mixins,
+     *                                      constraints, …), which describe a partial
+     *                                      shape shared across many node types.
      * @return array{interfaceName: string, content: string}|null
      */
-    public function buildInterfaceContent(NodeType $nodeType): ?array
+    public function buildInterfaceContent(NodeType $nodeType, bool $forceOptionalProperties = false): ?array
     {
         $nodeTypeName = $nodeType->getName();
         $interfaceName = $this->getInterfaceName($nodeTypeName);
@@ -552,7 +586,7 @@ class SchemaService
                 }
             }
 
-            $isOptional = $this->isPropertyOptional($propertyConfig);
+            $isOptional = $forceOptionalProperties || $this->isPropertyOptional($propertyConfig);
             $optionalMark = $isOptional ? '?' : '';
 
             $comment = $this->generatePropertyComment($propertyConfig);

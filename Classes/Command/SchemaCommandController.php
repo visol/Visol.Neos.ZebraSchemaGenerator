@@ -56,20 +56,29 @@ class SchemaCommandController extends CommandController
         $this->schemaService->generateBaseTypesFile();
         $this->outputLine("  Generated: _types.ts");
 
-        $nodeTypes = $this->nodeTypeManager->getNodeTypes(false);
+        // Include abstract node types so configured includes (mixins, constraints, …)
+        // can be generated; all other abstract types are skipped below.
+        $nodeTypes = $this->nodeTypeManager->getNodeTypes(true);
         $generatedInterfaces = [];
         $excludedNodeTypes = $this->schemaService->getExcludedNodeTypes();
 
         foreach ($nodeTypes as $nodeType) {
             $name = $nodeType->getName();
+            $isIncludedAbstract = $this->schemaService->isAbstractNodeTypeIncluded($name);
+
+            // Abstract types only get an interface when explicitly included
+            if ($nodeType->isAbstract() && !$isIncludedAbstract) {
+                continue;
+            }
 
             // Skip excluded types
             if (in_array($name, $excludedNodeTypes, true)) {
                 continue;
             }
 
-            // Skip abstract types matching configured name patterns (Mixins, Constraints)
-            if ($this->schemaService->isExcludedByNamePattern($name)) {
+            // Skip types matching configured exclusion name patterns;
+            // configured abstract include patterns win over exclusion patterns
+            if (!$isIncludedAbstract && $this->schemaService->isExcludedByNamePattern($name)) {
                 continue;
             }
 
@@ -80,7 +89,8 @@ class SchemaCommandController extends CommandController
                 }
             }
 
-            $result = $this->schemaService->buildInterfaceContent($nodeType);
+            // Included abstract interfaces describe a partial shape: all properties optional
+            $result = $this->schemaService->buildInterfaceContent($nodeType, $isIncludedAbstract);
             if ($result === null) {
                 continue;
             }
