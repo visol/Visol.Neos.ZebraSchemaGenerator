@@ -544,6 +544,9 @@ class SchemaService
             if (str_starts_with($propertyName, '_') || str_starts_with($propertyName, 'neos_')) {
                 continue;
             }
+            if ($this->isSearchProjection($propertyConfig)) {
+                continue;
+            }
 
             $hasProperties = true;
 
@@ -1072,6 +1075,20 @@ class SchemaService
         }
 
         return 'any[]';
+    }
+
+    /**
+     * Whether the property only exists in the search index: it has a `search.indexing`
+     * expression that computes the indexed value, and no `ui`, so no editor ever sets it on the
+     * node. The ContentApi serializes the stored properties only, so such a property never
+     * reaches the frontend.
+     *
+     * @param array<string, mixed> $propertyConfig
+     */
+    protected function isSearchProjection(array $propertyConfig): bool
+    {
+        return isset($propertyConfig['search']['indexing'])
+            && ($propertyConfig['ui'] ?? null) === null;
     }
 
     /**
