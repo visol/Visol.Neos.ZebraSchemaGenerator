@@ -74,6 +74,16 @@ Visol:
       # default so this package carries no dependency on any taxonomy package.
       referenceTypesAsString: []
 
+      # Neos property types whose optional properties are typed `T | null`:
+      # clearing them in the inspector stores null (an empty date or number, a
+      # removed reference), and the ContentApi returns it as is. A reference
+      # beyond recursiveReferencePropertyDepth is null as well. A missing
+      # property (node created before it existed) is covered by `?` alone.
+      nullableTypes:
+        - 'DateTime'
+        - 'integer'
+        - 'reference'
+
       # Project-specific property type overrides and extra properties.
       customPropertyTypes: {}
       extraProperties: {}

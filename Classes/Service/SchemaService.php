@@ -88,6 +88,12 @@ class SchemaService
     protected ?array $referenceTypesAsString = null;
 
     /**
+     * @Flow\InjectConfiguration(package="Visol.Neos.ZebraSchemaGenerator", path="nullableTypes")
+     * @var list<string>|null
+     */
+    protected ?array $nullableTypes = null;
+
+    /**
      * @Flow\InjectConfiguration(package="Visol.Neos.ZebraSchemaGenerator", path="baseTypeNames")
      * @var list<string>|null
      */
@@ -583,6 +589,11 @@ class SchemaService
             $isOptional = $this->isPropertyOptional($propertyConfig);
             $optionalMark = $isOptional ? '?' : '';
 
+            // Clearing such a value in the inspector stores null, which the ContentApi returns as is
+            if ($customType === null && $isOptional && $this->isNullable($propertyConfig)) {
+                $tsType .= ' | null';
+            }
+
             $comment = $this->generatePropertyComment($propertyConfig);
             $commentStr = $comment !== '' ? " // {$comment}" : '';
 
@@ -910,6 +921,16 @@ class SchemaService
         }
 
         return true;
+    }
+
+    /**
+     * Whether the property's Neos type is one of the configured nullableTypes
+     *
+     * @param array<string, mixed> $propertyConfig
+     */
+    protected function isNullable(array $propertyConfig): bool
+    {
+        return in_array($propertyConfig['type'] ?? 'string', $this->nullableTypes ?? [], true);
     }
 
     /**
