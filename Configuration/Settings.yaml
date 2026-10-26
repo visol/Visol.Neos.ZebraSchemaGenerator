@@ -18,6 +18,14 @@ Visol:
       # inside settingsFilePath. Defaults to this package's own settings root.
       configKeyPath: 'Visol.Neos.ZebraSchemaGenerator'
 
+      # Shell command that formats the generated files with the project's own
+      # formatter, run from FLOW_PATH_ROOT after every interface generation.
+      # "{files}" is replaced by the shell-quoted paths of all written files.
+      # The generator's own output is not tied to any code style; the
+      # comparison with existing files ignores what a formatter changes.
+      # Example: 'cd ../frontend && npx biome check --write {files}'
+      formatCommand: null
+
       # -----------------------------------------------------------------------
       # Templates — defaults ship with this package, overridable per project.
       # -----------------------------------------------------------------------
@@ -65,6 +73,16 @@ Visol:
       # instead of an interface reference (e.g. taxonomy identifiers). Empty by
       # default so this package carries no dependency on any taxonomy package.
       referenceTypesAsString: []
+
+      # Neos property types whose optional properties are typed `T | null`:
+      # clearing them in the inspector stores null (an empty date or number, a
+      # removed reference), and the ContentApi returns it as is. A reference
+      # beyond recursiveReferencePropertyDepth is null as well. A missing
+      # property (node created before it existed) is covered by `?` alone.
+      nullableTypes:
+        - 'DateTime'
+        - 'integer'
+        - 'reference'
 
       # Project-specific property type overrides and extra properties.
       customPropertyTypes: {}

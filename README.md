@@ -33,6 +33,21 @@ package's own `Configuration/Settings.yaml` documents the generic defaults; over
 project-specific keys (`interfacesTargetPath`, `componentTargetPath`, `excludedNodeTypes`,
 `referenceTypesAsString`, `customPropertyTypes`, `extraProperties`, …) in your site package.
 
+### Code style
+
+The generated files follow no particular code style. Set `formatCommand` to run the project's
+formatter over every written file, e.g. Biome or Prettier:
+
+```yaml
+Visol:
+  Neos:
+    ZebraSchemaGenerator:
+      formatCommand: 'cd ../frontend && npx biome check --write {files}'
+```
+
+A rerun still compares the generated properties with the formatted files, so divergences and
+extra properties are detected the same way.
+
 ## License
 
 MIT
